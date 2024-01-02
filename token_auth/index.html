@@ -15,21 +15,34 @@
             <h1 id="login-header">Login</h1>
 
             <div id="login-error-msg-holder">
-                <p id="login-error-msg">Invalid username <span id="error-msg-second-line">and/or password</span></p>
+                <p id="login-error-msg">Invalid username <span
+                        id="error-msg-second-line">and/or password</span></p>
             </div>
 
             <form id="login-form" action="/api/login" method="post">
-                <input type="text" name="login" id="username-field" class="login-form-field" placeholder="Username">
-                <input type="password" name="password" id="password-field" class="login-form-field" placeholder="Password">
+                <input type="text" name="login" id="username-field"
+                    class="login-form-field" placeholder="Username">
+                <input type="password" name="password" id="password-field"
+                    class="login-form-field" placeholder="Password">
                 <input type="submit" value="Login" id="login-form-submit">
             </form>
 
+            <h1 id="signup-header">Sign Up</h1>
+
+            <form id="signup-form" action="/api/signup" method="post">
+                <input type="text" name="signup-username"
+                    id="signup-username-field"
+                    class="login-form-field" placeholder="Username">
+                <input type="password" name="signup-password"
+                    id="signup-password-field"
+                    class="login-form-field" placeholder="Password">
+                <input type="submit" value="Sign Up" id="signup-form-submit">
+            </form>
         </main>
     </body>
 
-
     <style>
-        html {
+   html {
             height: 100%;
         }
 
@@ -103,7 +116,7 @@
             padding: 0px 0px 5px 5px;
         }
 
-        #login-form-submit {
+        #login-form-submit, #signup-form-submit {
             width: 100%;
             padding: 7px;
             border: none;
@@ -114,71 +127,106 @@
             cursor: pointer;
             outline: none;
         }
-    </style>
+
+    #signup-header {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 18px;
+        color: #3a3a3a;
+    }
+
+    #signup-form {
+        align-self: flex-start;
+        display: grid;
+        justify-items: center;
+        align-items: center;
+    }
+</style>
 
     <script>
-        const session = sessionStorage.getItem('session');
+    const session = sessionStorage.getItem('session');
 
-        let token;
+let token;
 
-        try {
-            token = JSON.parse(session).token;
-        } catch(e) {}
+try {
+    token = JSON.parse(session).token;
+} catch(e) {}
 
-        if (token) {
-            axios.get('/', {
-                headers: {
-                    Authorization: token
-                }
-            }).then((response) => {
-                const { username } = response.data;
-
-                if (username) {
-                    const mainHolder = document.getElementById("main-holder");
-                    const loginHeader = document.getElementById("login-header");
-
-                    loginForm.remove();
-                    loginErrorMsg.remove();
-                    loginHeader.remove();
-
-                    mainHolder.append(`Hello ${username}`);
-                    logoutLink.style.opacity = 1;
-                }
-            });
+if (token) {
+    axios.get('/', {
+        headers: {
+            Authorization: token
         }
+    }).then((response) => {
+        const { username } = response.data;
+
+        if (username) {
+            const mainHolder = document.getElementById("main-holder");
+            const loginHeader = document.getElementById("login-header");
+
+            loginForm.remove();
+            loginErrorMsg.remove();
+            loginHeader.remove();
+
+            mainHolder.append(`Hello ${username}`);
+            logoutLink.style.opacity = 1;
+        }
+    });
+}
 
 
-        const loginForm = document.getElementById("login-form");
-        const loginButton = document.getElementById("login-form-submit");
-        const loginErrorMsg = document.getElementById("login-error-msg");
-        const logoutLink =  document.getElementById("logout");
+const loginForm = document.getElementById("login-form");
+const loginButton = document.getElementById("login-form-submit");
+const loginErrorMsg = document.getElementById("login-error-msg");
+const logoutLink =  document.getElementById("logout");
 
-        logoutLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            sessionStorage.removeItem('session');
-            location.reload();
+logoutLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    sessionStorage.removeItem('session');
+    location.reload();
+});
+
+loginButton.addEventListener("click", (e) => {
+    e.preventDefault();
+    const login = loginForm.login.value;
+    const password = loginForm.password.value;
+
+
+    axios({
+        method: 'post',
+        url: '/api/login',
+        data: {
+            login,
+            password
+        }
+    }).then((response) => {
+        const { username } =  response.data;
+        sessionStorage.setItem('session', JSON.stringify(response.data));
+        location.reload();
+    }).catch((response) => {
+        loginErrorMsg.style.opacity = 1;
+    });
+})
+
+    const signupForm = document.getElementById("signup-form");
+    const signupButton = document.getElementById("signup-form-submit");
+
+    signupButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        const signupUsername = signupForm["signup-username"].value;
+        const signupPassword = signupForm["signup-password"].value;
+
+        axios({
+            method: 'post',
+            url: '/api/register',
+            data: {
+                login: signupUsername,
+                password: signupPassword
+            }
+        }).then((response) => {
+        }).catch((error) => {
         });
+    });
+</script>
 
-        loginButton.addEventListener("click", (e) => {
-            e.preventDefault();
-            const login = loginForm.login.value;
-            const password = loginForm.password.value;
-
-
-            axios({
-                method: 'post',
-                url: '/api/login',
-                data: {
-                    login,
-                    password
-                }
-            }).then((response) => {
-                const { username } =  response.data;
-                sessionStorage.setItem('session', JSON.stringify(response.data));
-                location.reload();
-            }).catch((response) => {
-                loginErrorMsg.style.opacity = 1;
-            });
-        })
-    </script>
 </html>
