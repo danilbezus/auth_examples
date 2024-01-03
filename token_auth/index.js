@@ -6,7 +6,7 @@ const path = require('path');
 const port = 3000;
 const fs = require('fs');
 const { auth0Login, auth0Register, auth0RefreshToken } = require('./auth0');
-
+const jwt = require('./jwt')
 
 const app = express();
 app.use(bodyParser.json());
@@ -95,6 +95,7 @@ app.get('/', async (req, res) => {
 			req.session.expires_at = Math.floor(Date.now() / 1000) + response.expires_in;
 			console.log('token refreshed');
 			console.log(response);
+			jwt.validateJtw(req.session.access_token);
 		}
 
 		return res.json({
