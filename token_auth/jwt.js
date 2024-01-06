@@ -1,15 +1,20 @@
-const jsonwebtoken = require('jsonwebtoken');
-const fs = require('fs');
+const auth0 = require("./auth0");
+const jwkToPem = require("jwk-to-pem");
+const jsonwebtoken = require("jsonwebtoken");
 
-const getCert = () => fs.readFileSync('cert.pem');
 
-const validateJtw = (jtwToken) => {
-  const cert = getCert();
-  jsonwebtoken.verify(jtwToken, cert, { algorithms: ['RS256'] }, (error, payload) => {
-    if (error) throw new Error(error);
-    console.log('jwt validated');
-    console.log(payload);
-  });
-}
+const validateJwt = async (token) => {
+  const jwks = await auth0.getJwks();
+  const validationResult = jsonwebtoken.verify(token, jwkToPem(jwks));
 
-module.exports = { validateJtw }
+  return {
+    principal: {
+      username: validationResult.sub,
+    },
+    expires: new Date(Number(validationResult.exp) * 1000),
+  };
+};
+
+module.exports = {
+  validateJwt,
+};
