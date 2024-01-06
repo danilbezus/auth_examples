@@ -1,66 +1,147 @@
-const axios = require('axios');
+const axios = require("axios").default;
 
-const AUTH0_DOMAIN = 'dev-xxaf0urwyh5kyms6.us.auth0.com';
-const AUTH0_CLIENT_ID = '6TvNz8N65Op5hKCQWGdO0L8ysRG04hGN';
-const AUTH0_CLIENT_SECRET = 'wpw-fSzhL8k_borUQEe7Ewv3LmVWL_CCzW52191BZAwU3T0c093JyTwC7vzTIEuZ';
-const AUTH0_AUDIENCE = 'https://dev-xxaf0urwyh5kyms6.us.auth0.com/api/v2/';
+const AUTH0_URL = "https://dev-xxaf0urwyh5kyms6.us.auth0.com/";
+const CLIENT_ID = "6TvNz8N65Op5hKCQWGdO0L8ysRG04hGN";
+const CLIENT_SECRET =
+  "wpw-fSzhL8k_borUQEe7Ewv3LmVWL_CCzW52191BZAwU3T0c093JyTwC7vzTIEuZ";
+const AUDIENCE = 'https://test-api/';
 
-const auth0RefreshToken = async (refreshToken) => {
-  const response = await axios.post('https://' + AUTH0_DOMAIN + "/oauth/token", {
-    grant_type: 'refresh_token',
-    refresh_token: refreshToken,
-    client_id: AUTH0_CLIENT_ID,
-    client_secret: AUTH0_CLIENT_SECRET,
+const getTokens = async (email, password) => {
+  const authResponse = await axios.post(AUTH0_URL + "oauth/token", {
+    grant_type: "password",
+    username: email,
+    password: password,
+    audience: AUDIENCE,
+    scope: "offline_access", 
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
   });
 
-  return response.data;
-}
-
-const getAccessToken = async () => {
-  const response = await axios.post('https://' + AUTH0_DOMAIN + '/oauth/token', {
-    grant_type: 'client_credentials',
-    audience: AUTH0_AUDIENCE,
-    client_id: AUTH0_CLIENT_ID,
-    client_secret: AUTH0_CLIENT_SECRET,
-  });
-  if (response.status !== 200) {
+  if (authResponse.status !== 200) {
     return null;
   }
-  return response.data;
-}
 
-const auth0Login = async (username, password) => {
-  const response = await axios.post('https://' + AUTH0_DOMAIN + '/oauth/token', {
-    grant_type: 'password',
-    username: username,
-    password: password,
-    audience: AUTH0_AUDIENCE,
-    scope: 'offline_access',
-    client_id: AUTH0_CLIENT_ID,
-    client_secret: AUTH0_CLIENT_SECRET,
+  return {
+    access_token: authResponse.data.access_token,
+    refresh_token: authResponse.data.refresh_token,
+  };
+};
+
+const refreshAccessToken = async (refreshToken) => {
+  const authResponse = await axios.post(AUTH0_URL + "oauth/token", {
+    grant_type: "refresh_token",
+    refreshToken,
+    client_id: CLIENT_ID,
+    client_secret: CLIENT_SECRET,
   });
-  console.log(response);
-  return response.data;
-}
 
+  if (authResponse.status !== 200) {
+    return null;
+  }
 
-const auth0Register = async (username, password) => {
-  const accessTokenRes = await getAccessToken();
-  const accessToken = accessTokenRes.access_token;
-  const response = await axios.post('https://' + AUTH0_DOMAIN + '/api/v2/users',
-    {
-      email: username,
-      password,
-      connection: "Username-Password-Authentication",
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+  return {
+    access_token: authResponse.data.access_token,
+    refresh_token: authResponse.data.refresh_token,
+  };
+};
+
+const getManagementToken = async () => {
+  try {
+    const authResponse = await axios.post(AUTH0_URL + "oauth/token", {
+      grant_type: "client_credentials",
+      audience: "https://dev-0c5i5w01fsm38lot.us.auth0.com/api/v2/",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+    });
+
+    if (authResponse.status !== 200) {
+      return null;
+    }
+
+    return authResponse.data.access_token;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+
+const getJwks = async () => {
+  const authResponse = await axios.get(AUTH0_URL + ".well-known/jwks.json");
+  if (authResponse.status !== 200) {
+    return null;
+  }
+
+  return authResponse.data.keys[0];
+};
+
+const createUser = async (email, password) => {
+  try {
+    const managementToken = await getManagementToken();
+    const authResponse = await axios.post(
+      "https://dev-0c5i5w01fsm38lot.us.auth0.com/api/v2/users",
+      {
+        email,
+        password,
+        connection: "Username-Password-Authentication",
       },
-    })
-  console.log(response);
-  return response;
-}
+      {
+        headers: {
+          Authorization: `Bearer ${managementToken}`,
+        },
+      }
+    );
 
+    if (authResponse.status !== 200) {
+      return null;
+    }
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
 
-module.exports = { auth0Login, auth0Register, auth0RefreshToken }
+const getLoginRedirectUri = () => {
+  const localRedirectUri = encodeURIComponent(
+    "http://localhost:3000/oidc-callback"
+  );
+
+  return `${AUTH0_URL}authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${localRedirectUri}&scope=offline_access&audience=${AUDIENCE}`;
+};
+
+const getTokensFromCode = async (code) => {
+  try {
+    const data = {
+      grant_type: "authorization_code",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      code: code,
+      audience: AUDIENCE,
+      redirect_uri: "http://localhost:3000",
+    };
+
+    const authResponse = await axios.post(AUTH0_URL + "oauth/token", data, {
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    });
+
+    if (authResponse.status !== 200) {
+      return null;
+    }
+
+    return {
+      access_token: authResponse.data.access_token,
+      refresh_token: authResponse.data.refresh_token,
+    };
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+};
+
+module.exports = {
+  createUser,
+  getTokens,
+  refreshAccessToken,
+  getJwks,
+  getLoginRedirectUri,
+  getTokensFromCode,
+};
